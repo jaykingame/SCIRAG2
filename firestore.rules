@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidParsedPage(data) {
+      return hasRequiredFields(['userId', 'image', 'result', 'createdAt']) &&
+             data.userId is string &&
+             data.image is string &&
+             data.result is map &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidDocumentIndex(data) {
+      return hasRequiredFields(['userId', 'type', 'pageNumber', 'text', 'embedding', 'createdAt']) &&
+             data.userId is string &&
+             data.type in ['text', 'figure', 'table', 'page'] &&
+             data.pageNumber is number &&
+             data.text is string &&
+             data.embedding is list &&
+             (!('imageBase64' in data) || data.imageBase64 is string) &&
+             (!('boundingBox' in data) || data.boundingBox is list) &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidChatMessage(data) {
+      return hasRequiredFields(['userId', 'role', 'text', 'createdAt']) &&
+             data.userId is string &&
+             data.role in ['user', 'assistant'] &&
+             data.text is string &&
+             (!('sources' in data) || data.sources is list) &&
+             (!('status' in data) || data.status is string) &&
+             (!('isStreaming' in data) || data.isStreaming is bool) &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidReport(data) {
+      return hasRequiredFields(['userId', 'content', 'createdAt']) &&
+             data.userId is string &&
+             data.content is string &&
+             isValidDateString(data.createdAt);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /parsed_pages/{pageId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidParsedPage(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isDocOwner() && isValidParsedPage(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /document_index/{indexId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidDocumentIndex(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isDocOwner() && isValidDocumentIndex(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /chat_messages/{messageId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidChatMessage(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isDocOwner() && isValidChatMessage(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /reports/{reportId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidReport(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isDocOwner() && isValidReport(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+  }
+}

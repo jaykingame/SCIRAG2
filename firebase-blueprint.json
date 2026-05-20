@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "ParsedPage": {
+      "title": "ParsedPage",
+      "description": "A parsed page from a scientific PDF",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner of the document" },
+        "page_number": { "type": "number" },
+        "image": { "type": "string", "description": "Base64 image of the page" },
+        "result": { "type": "string", "description": "JSON stringified ParsedPageResult" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "page_number", "image", "result", "createdAt"]
+    },
+    "DocumentIndex": {
+      "title": "DocumentIndex",
+      "description": "Multimodal index item for retrieval",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "figure", "table", "page"] },
+        "pageNumber": { "type": "number" },
+        "text": { "type": "string" },
+        "imageBase64": { "type": "string" },
+        "embedding": { "type": "array", "items": { "type": "number" } },
+        "boundingBox": { "type": "array", "items": { "type": "number" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "pageNumber", "text", "embedding", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A chat message in the Q&A",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "assistant"] },
+        "text": { "type": "string" },
+        "sources": { "type": "string", "description": "JSON stringified sources" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "text", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Generated scientific report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/parsed_pages/{pageId}": {
+      "schema": { "$ref": "#/entities/ParsedPage" },
+      "description": "Stores parsed pages"
+    },
+    "/document_index/{indexId}": {
+      "schema": { "$ref": "#/entities/DocumentIndex" },
+      "description": "Stores multimodal index items"
+    },
+    "/chat_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Stores chat messages"
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Stores generated reports"
+    }
+  }
+}
